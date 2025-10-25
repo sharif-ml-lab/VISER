@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+
+  <!-- ✅ Project-specific metadata -->
+  <title>VISER: Visual Input Structure for Enhanced Reasoning</title>
+  <meta name="description" content="VISER adds light-weight spatial structure to visual inputs and a short prompt to guide sequential parsing, improving counting, search, scene description, and spatial reasoning in VLMs.">
+  <meta name="keywords" content="VISER, Visual Reasoning, VLM, Binding Problem, Counting, Visual Search, Spatial Reasoning, GPT-4o">
+
+  <!-- ✅ Mobile-friendly -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- (Optional) Analytics: remove or replace with your own ID -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-PYVRSFMDRL"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-PYVRSFMDRL');
+  </script>
+
+  <!-- Fonts & CSS -->
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro" rel="stylesheet">
+  <link rel="stylesheet" href="./static/css/bulma.min.css">
+  <link rel="stylesheet" href="./static/css/bulma-carousel.min.css">
+  <link rel="stylesheet" href="./static/css/bulma-slider.min.css">
+  <link rel="stylesheet" href="./static/css/fontawesome.all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+  <link rel="stylesheet" href="./static/css/index.css">
+  <link rel="icon" href="./static/images/favicon.svg">
+
+  <!-- Scripts -->
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script defer src="./static/js/fontawesome.all.min.js"></script>
+  <script src="./static/js/bulma-carousel.min.js"></script>
+  <script src="./static/js/bulma-slider.min.js"></script>
+  <script src="./static/js/index.js"></script>
+
+  <style>
+    /* --- Small global helpers --- */
+    .fake-link { color:#3273dc; text-decoration:none; cursor:default; }
+    .hero .conf-text { color:#e90b0b; font-size:clamp(1.2rem,3.5vw,2.2rem); font-weight:700; letter-spacing:.5px }
+    .publication-title { word-break: break-word; }
+
+    /* Main figure: clean, responsive image */
+    #main-figure .wrap{
+      width: clamp(320px, 70vw, 900px);
+      margin: 0 auto 64px;
+      display:flex; justify-content:center; align-items:center;
+    }
+    #main-figure img{ width:100%; height:auto; display:block }
+
+    /* Responsive YouTube (Bulma) */
+    .video-container{ position:relative; }
+    .video-container .video-wrapper{ position:relative; padding-top:56.25%; } /* 16:9 */
+    .video-container iframe{
+      position:absolute; inset:0; width:100%; height:100%; border:0;
+    }
+
+    /* VISER demo sizing knobs (small on laptops) */
+    #viser-strawberry{ --viser-max: 560px; --viser-vw: 56vw; }
+    #viser-strawberry .wrap{
+      width: clamp(280px, var(--viser-vw), var(--viser-max));
+      margin: 0 auto;
+      display:flex; flex-direction:column; align-items:center; gap:14px;
+      text-align:center;
+    }
+    #viser-strawberry .hero{
+      width:100%; border:2px solid #e9d5ff; background:#fbf7ff; border-radius:18px;
+      padding:16px 18px; box-shadow:0 10px 24px rgba(160,120,255,.12);
+      font:600 1.02rem/1.6 Inter,system-ui,Arial; color:#111;
+      opacity:0; transform:translateY(6px);
+      transition:opacity .45s, transform .45s, max-height .45s, margin .45s, padding .45s;
+      max-height:500px; overflow:hidden;
+    }
+    #viser-strawberry .brand-badge{
+      background:#7c3aed; color:#fff; font-weight:800;
+      border-radius:10px; padding:2px 10px; margin-right:8px; display:inline-block;
+    }
+    #viser-strawberry .hero.hide{ opacity:0; height:0; max-height:0; margin:0; padding:0; border:0; overflow:hidden }
+
+    #viser-strawberry .stage{ width:100%; position:relative; opacity:0; transform:translateY(6px); transition:opacity .45s, transform .45s }
+    #viser-strawberry .stage img{ width:100%; height:auto; display:block; border-radius:18px }
+
+    #viser-strawberry .prompt{ font:600 1rem/1.6 Inter,system-ui; color:#374151; opacity:0; transform:translateY(6px); transition:opacity .45s, transform .45s; width:100% }
+    #viser-strawberry .rows{ opacity:0; transform:translateY(6px); transition:opacity .45s, transform .45s; width:100%; display:flex; flex-direction:column; gap:2px }
+    #viser-strawberry .result{ font-weight:900; font-size:clamp(1.1rem, 2.2vw, 1.8rem); display:flex; justify-content:center; align-items:center; gap:10px; opacity:0; transition:opacity .35s; width:100% }
+    #viser-strawberry .x, #viser-strawberry .tick{ display:inline-block; width:24px; height:24px; border-radius:8px; color:#fff; line-height:24px; text-align:center; font-weight:900 }
+    #viser-strawberry .x{ background:#e74c3c }  .tick{ background:#2ecc71 }
+    #viser-strawberry .muted{ color:#6b7280 }
+
+    #viser-strawberry .lines{
+      position:absolute; left:0; top:0; width:100%; height:0; /* set via JS to img height */
+      pointer-events:none; opacity:0; transition:opacity .4s; border-radius:18px; overflow:hidden;
+    }
+    #viser-strawberry .line{ position:absolute; left:0; right:0; height:2px; background:#111827; opacity:.65; transform:scaleX(0); transform-origin:left }
+    #viser-strawberry .r1{ top:25% } .r2{ top:50% } .r3{ top:75% }
+    #viser-strawberry .lbl{ position:absolute; left:10px; transform:translateY(-50%); font:800 13px/1 Inter; color:#111827; opacity:.95 }
+    #viser-strawberry .c1{ top:12.5% } .c2{ top:37.5% } .c3{ top:62.5% } .c4{ top:87.5% }
+    .grow{ animation:growX .6s ease forwards } @keyframes growX{ from{transform:scaleX(0)} to{transform:scaleX(1)} }
+
+    @media (max-width: 520px){
+      #viser-strawberry{ --viser-max: 92vw; --viser-vw: 92vw; }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ===== HERO / TITLE ===== -->
+  <section class="hero">
+    <div class="hero-body">
+      <div class="container is-max-desktop">
+        <div class="columns is-centered">
+          <div class="column has-text-centered">
+            <h1 class="title is-1 publication-title">Visual Structures Help Visual Reasoning: Addressing the Binding Problem in VLMs</h1>
+
+            <div class="centered">
+              <span class="conf-text">NeurIPS 2025</span>
+            </div>
+
+            <!-- Authors -->
+            <div class="is-size-5 publication-authors">
+              <span class="author-block fake-link">Amirmohammad Izadi∗<sup>1</sup>,</span>
+              <span class="author-block fake-link">Mohammad Ali Banayeeanzade∗<sup>1</sup>,</span>
+              <span class="author-block fake-link">Fatemeh Askari<sup>1</sup>,</span>
+              <span class="author-block fake-link">Ali Rahimiakbar<sup>1</sup>,</span>
+              <span class="author-block fake-link">Mohammad Mahdi Vahedi<sup>1</sup>,</span>
+              <span class="author-block fake-link">Hosein Hasani<sup>1</sup>,</span>
+              <span class="author-block fake-link">Mahdieh Soleymani Baghshah<sup>1</sup></span>
+            </div>
+
+            <div class="is-size-6 publication-authors">
+              <span class="author-block">∗Equal contribution.</span>
+            </div>
+
+            <div class="is-size-5 publication-authors">
+              <span class="author-block"><sup>1</sup>Department of Computer Engineering, Sharif University of Technology</span>
+            </div>
+
+            <!-- Links -->
+            <div class="column has-text-centered" style="margin-top:10px;">
+              <div class="publication-links">
+                <span class="link-block">
+                  <a href="https://arxiv.org/abs/2506.22146" class="external-link button is-normal is-rounded is-dark">
+                    <span class="icon"><i class="fas fa-file-pdf"></i></span><span>Paper</span>
+                  </a>
+                </span>
+                <span class="link-block">
+                  <a href="https://arxiv.org/abs/2506.22146" class="external-link button is-normal is-rounded is-dark">
+                    <span class="icon"><i class="ai ai-arxiv"></i></span><span>arXiv</span>
+                  </a>
+                </span>
+              </div>
+            </div>
+            <!-- /Links -->
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <!-- /HERO -->
+
+  <!-- ===== Main Figure (clean, responsive) ===== -->
+  <section id="main-figure" aria-label="Main Figure">
+    <div class="wrap">
+      <img src="static/images/main_figure.png" alt="Main Figure" loading="lazy">
+    </div>
+  </section>
+
+  <!-- ===== VISER Demo (centered, autoplay on scroll) ===== -->
+  <section id="viser-strawberry" aria-label="Viser demo">
+    <div class="wrap">
+      <!-- Intro (appears once, then collapses) -->
+      <div class="hero" id="hero">
+        <span class="brand-badge">Viser</span>
+        Visual Structures for Better Visual Reasoning — we add light-weight <strong>row-wise visual structure</strong>
+        and a short prompt to guide sequential scanning, improving <strong>object counting</strong> by addressing the
+        <strong>binding problem</strong>.
+      </div>
+
+      <!-- Exact image (no crop) + overlay -->
+      <div class="stage" id="stage">
+        <img id="rawImg" src="static/images/strawberries_raw.jpg" alt="strawberries">
+        <div class="lines" id="lines">
+          <div class="line r1"></div>
+          <div class="line r2"></div>
+          <div class="line r3"></div>
+          <div class="lbl c1">1</div>
+          <div class="lbl c2">2</div>
+          <div class="lbl c3">3</div>
+          <div class="lbl c4">4</div>
+        </div>
+      </div>
+
+      <!-- Narration (centered) -->
+      <div class="prompt" id="q">How many strawberries are there in this image?</div>
+      <div class="result" id="wrong"><span>Total: 10</span><span class="x">×</span></div>
+
+      <div class="prompt" id="pViser"><span class="muted">Viser:</span> Scan the image sequentially based on the horizontal lines.</div>
+      <div class="rows" id="rows">
+        <div>Row 1: 2 strawberries</div>
+        <div>Row 2: 4 strawberries</div>
+        <div>Row 3: 3 strawberries</div>
+        <div>Row 4: 2 strawberries</div>
+      </div>
+      <div class="result" id="ok"><span>Total: 11</span><span class="tick">✓</span></div>
+    </div>
+
+    <!-- Demo logic (autoplay when visible; exact overlay height) -->
+    <script>
+      (function(){
+        const root   = document.getElementById('viser-strawberry');
+        const hero   = document.getElementById('hero');
+        const stage  = document.getElementById('stage');
+        const img    = document.getElementById('rawImg');
+        const lines  = document.getElementById('lines');
+        const q      = document.getElementById('q');
+        const wrong  = document.getElementById('wrong');
+        const pViser = document.getElementById('pViser');
+        const rows   = document.getElementById('rows');
+        const ok     = document.getElementById('ok');
+        const lineEls= [...lines.querySelectorAll('.line')];
+
+        function syncOverlay(){ lines.style.height = img.clientHeight + 'px'; }
+        img.addEventListener('load', syncOverlay);
+        window.addEventListener('resize', syncOverlay);
+
+        let playing=false, cancel=false;
+        function reset(){
+          hero.classList.remove('hide');
+          hero.style.display='block';
+          hero.style.opacity=0; hero.style.transform='translateY(6px)'; hero.style.maxHeight='500px';
+          stage.style.opacity=0; stage.style.transform='translateY(6px)';
+          [q, wrong, pViser, rows, ok].forEach(el=>{el.style.opacity=0; el.style.transform='translateY(6px)';});
+          lines.style.opacity=0; lineEls.forEach(l=>l.classList.remove('grow'));
+          syncOverlay();
+        }
+        const wait = ms => new Promise(r=>setTimeout(r,ms));
+
+        async function playOnce(){
+          playing=true; cancel=false; reset();
+
+          await wait(300); if(cancel) return;
+          hero.style.opacity=1; hero.style.transform='translateY(0)';
+
+          await wait(1400); if(cancel) return;
+          hero.classList.add('hide');
+
+          await wait(500); if(cancel) return;
+          hero.style.display='none';
+
+          stage.style.opacity=1; stage.style.transform='translateY(0)';
+
+          await wait(800); if(cancel) return;
+          q.style.opacity=1; q.style.transform='translateY(0)';
+
+          await wait(1100); if(cancel) return;
+          wrong.style.opacity=1;
+
+          await wait(1100); if(cancel) return;
+          wrong.animate([{opacity:1,transform:'scale(1)'},{opacity:0,transform:'scale(.98)'}],{duration:360,fill:'forwards'});
+
+          await wait(300); if(cancel) return;
+          lines.style.opacity=1; syncOverlay();
+
+          for(const l of lineEls){ if(cancel) return; l.classList.add('grow'); await wait(310); }
+
+          await wait(480); if(cancel) return;
+          pViser.style.opacity=1; pViser.style.transform='translateY(0)';
+
+          await wait(820); if(cancel) return;
+          rows.style.opacity=1; rows.style.transform='translateY(0)';
+
+          await wait(820); if(cancel) return;
+          ok.style.opacity=1;
+
+          playing=false;
+        }
+
+        const io = new IntersectionObserver(entries=>{
+          entries.forEach(e=>{
+            if(e.isIntersecting){ if(!playing) playOnce(); }
+            else { cancel=true; playing=false; reset(); }
+          });
+        }, { threshold: 0.3 });
+
+        io.observe(root);
+
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+          io.disconnect();
+          hero.style.display='none';
+          stage.style.opacity=1; stage.style.transform='none';
+          syncOverlay();
+          lines.style.opacity=1; lineEls.forEach(l=>l.style.transform='none');
+          q.style.opacity=1; wrong.style.opacity=0;
+          pViser.style.opacity=1; rows.style.opacity=1; ok.style.opacity=1;
+        }
+      })();
+    </script>
+  </section>
+  <!-- /VISER Demo -->
+
+  <!-- ===== Abstract ===== -->
+  <section class="section">
+    <div class="container is-max-desktop">
+      <div class="columns is-centered has-text-centered">
+        <div class="column is-four-fifths">
+          <h2 class="title is-3">Abstract</h2>
+          <div class="content has-text-justified">
+            <p>
+              Despite progress in Vision-Language Models (VLMs), their capacity for visual reasoning is often limited by the
+              <em>binding problem</em>: the failure to reliably associate perceptual features with their correct visual referents.
+              This limitation underlies persistent errors in tasks such as counting, visual search, scene description, and spatial
+              relationship understanding. A key factor is that current VLMs process visual features largely in parallel, lacking
+              mechanisms for spatially grounded, serial attention.
+            </p>
+            <p>
+              This paper introduces <strong>VISER</strong> (Visual Input Structure for Enhanced Reasoning), a simple yet effective
+              intervention: augmenting visual inputs with low-level spatial structures and pairing this with a textual prompt that
+              encourages sequential, spatially aware parsing. We empirically demonstrate substantial performance improvements across
+              core visual reasoning tasks. Specifically, VISER improves GPT-4o visual search accuracy by <strong>25.00%</strong>,
+              increases counting accuracy by <strong>26.83%</strong>, reduces edit distance error in scene description by
+              <strong>0.32</strong>, and enhances performance on spatial relationship tasks by <strong>9.50%</strong> on a 2D
+              synthetic dataset.
+            </p>
+            <p>
+              Furthermore, we find that the visual modification is essential for these gains; purely textual strategies, including
+              Chain-of-Thought prompting, are insufficient and can even degrade performance. VISER enhances binding using only a
+              single-query inference, underscoring the importance of visual input design over purely linguistically based approaches.
+              These findings suggest that low-level visual structuring is a powerful and underexplored direction for improving
+              compositional visual reasoning and could serve as a general strategy for enhancing VLM performance on spatially grounded
+              tasks.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <!-- /Abstract -->
+
+<!-- ===== Results (three figures stacked vertically) ===== -->
+<section class="section" id="results">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">Results</h2>
+
+        <!-- Result 1 -->
+        <figure class="content" style="margin-bottom:2rem;">
+          <img src="static/images/table1.jpg" alt="Table 1: Counting accuracy across models and datasets" loading="lazy" style="width:100%; height:auto;">
+        </figure>
+
+        <!-- Result 2 -->
+        <figure class="content" style="margin-bottom:2rem;">
+          <img src="static/images/table2.jpg" alt="Table 2: Visual search harmonic mean results" loading="lazy" style="width:100%; height:auto;">
+        </figure>
+
+        <!-- Result 3 -->
+        <figure class="content">
+          <img src="static/images/table3.jpg" alt="Table 3–4: Scene description and spatial relationship results" loading="lazy" style="width:100%; height:auto;">
+        </figure>
+
+      </div>
+    </div>
+  </div>
+</section>
+<!-- /Results -->
+
+
+
+
+  <!-- ===== BibTeX ===== -->
+<section class="section" id="BibTeX">
+<div class="container is-max-desktop content">
+<h2 class="title">BibTeX</h2>
+<pre><code>@article{izadi2025visual,
+title = {Visual Structures Help Visual Reasoning: Addressing the Binding Problem in VLMs},
+author = {Izadi, Amirmohammad and Banayeeanzade, Mohammad Ali and Askari, Fatemeh and Rahimiakbar, Ali and Vahedi, Mohammad Mahdi and Hasani, Hosein and Soleymani Baghshah, Mahdieh},
+journal = {arXiv preprint arXiv:2506.22146},
+year = {2025}
+}</code></pre>
+</div>
+</section>
+
+  <!-- ===== Footer ===== -->
+  <footer class="footer">
+    <div class="container">
+      <div class="content has-text-centered">
+        <a class="icon-link" href="./static/images/viser.pdf"><i class="fas fa-file-pdf"></i></a>
+      </div>
+      <div class="columns is-centered">
+        <div class="column is-8">
+          <div class="content">
+            <p>
+              This website is licensed under a
+              <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.
+            </p>
+            <p>
+              You are free to borrow the <a href="https://github.com/nerfies/nerfies.github.io">source code</a> of this website,
+              please link back in the footer. Remove or replace the analytics code in the header for your deployment.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>
